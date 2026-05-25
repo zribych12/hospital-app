@@ -1,0 +1,302 @@
+<div class="flex">
+  <app-sidebar />
+
+  <main class="ml-64 flex-1 p-8 min-h-screen">
+    <!-- Back -->
+    <a routerLink="/medecin/patients" class="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-gray-700 mb-6">
+      ← Retour aux patients
+    </a>
+
+    @if (loading()) {
+      <div class="flex items-center justify-center h-64">
+        <svg class="animate-spin w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+      </div>
+    } @else if (patient()) {
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Left column: patient info + notes -->
+        <div class="lg:col-span-2 space-y-6">
+
+          <!-- Header card -->
+          <div class="card">
+            <div class="flex items-start gap-4">
+              <div class="w-14 h-14 bg-primary-100 rounded-2xl flex items-center justify-center text-primary-700 font-bold text-xl">
+                {{ patient()!.prenom[0] }}{{ patient()!.nom[0] }}
+              </div>
+              <div class="flex-1">
+                <h1 class="text-xl font-bold text-gray-900">{{ patient()!.prenom }} {{ patient()!.nom }}</h1>
+                <p class="text-gray-500">{{ patient()!.age }} ans · {{ patient()!.telephone }}</p>
+                @if (patient()!.email) {
+                  <p class="text-gray-500 text-sm">{{ patient()!.email }}</p>
+                }
+              </div>
+              <app-status-badge [statut]="patient()!.statut" />
+            </div>
+
+            <div class="mt-4 grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">Date de naissance</p>
+                <p class="text-sm font-medium">{{ patient()!.dateNaissance | date:'dd/MM/yyyy' }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-400 mb-0.5">Pathologie principale</p>
+                <p class="text-sm font-medium">{{ patient()!.pathologie || '—' }}</p>
+              </div>
+              @if (patient()!.adresse) {
+                <div class="col-span-2">
+                  <p class="text-xs text-gray-400 mb-0.5">Adresse</p>
+                  <p class="text-sm font-medium">{{ patient()!.adresse }}</p>
+                </div>
+              }
+            </div>
+
+            <!-- Boutons d'action -->
+            <div class="mt-4 pt-4 border-t border-gray-100 flex gap-2 flex-wrap">
+              <button (click)="showInfoEdit.set(!showInfoEdit())"
+                class="text-sm px-3 py-1.5 rounded-lg border transition-colors"
+                [class.bg-primary-600]="showInfoEdit()"
+                [class.text-white]="showInfoEdit()"
+                [class.border-primary-600]="showInfoEdit()"
+                [class.border-gray-300]="!showInfoEdit()"
+                [class.text-gray-600]="!showInfoEdit()"
+                [class.hover:bg-gray-50]="!showInfoEdit()">
+                ✏️ @if (showInfoEdit()) { Fermer } @else { Modifier les informations }
+              </button>
+              <button (click)="showNotesEdit.set(!showNotesEdit())"
+                class="text-sm px-3 py-1.5 rounded-lg border transition-colors"
+                [class.bg-indigo-600]="showNotesEdit()"
+                [class.text-white]="showNotesEdit()"
+                [class.border-indigo-600]="showNotesEdit()"
+                [class.border-gray-300]="!showNotesEdit()"
+                [class.text-gray-600]="!showNotesEdit()"
+                [class.hover:bg-gray-50]="!showNotesEdit()">
+                📝 @if (showNotesEdit()) { Fermer } @else { Notes médicales }
+              </button>
+            </div>
+          </div>
+
+          <!-- Informations patient (modifiables) -->
+          @if (showInfoEdit()) {
+            <div class="card border-l-4 border-primary-400">
+            <h2 class="text-base font-semibold text-gray-900 mb-4">✏️ Modifier les informations du patient</h2>
+
+            @if (saveInfoSuccess()) {
+              <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                ✅ Informations mises à jour
+              </div>
+            }
+
+            <form [formGroup]="patientInfoForm" (ngSubmit)="savePatientInfo()">
+              <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                  <label class="form-label">Prénom</label>
+                  <input formControlName="prenom" type="text" class="form-input" />
+                </div>
+                <div>
+                  <label class="form-label">Nom</label>
+                  <input formControlName="nom" type="text" class="form-input" />
+                </div>
+                <div>
+                  <label class="form-label">Téléphone</label>
+                  <input formControlName="telephone" type="tel" class="form-input" />
+                </div>
+                <div>
+                  <label class="form-label">Email</label>
+                  <input formControlName="email" type="email" class="form-input" />
+                </div>
+                <div>
+                  <label class="form-label">Pathologie principale</label>
+                  <input formControlName="pathologie" type="text" class="form-input" />
+                </div>
+                <div>
+                  <label class="form-label">Date de naissance</label>
+                  <input formControlName="dateNaissance" type="date" class="form-input" />
+                </div>
+              </div>
+              <div class="mb-4">
+                <label class="form-label">Adresse</label>
+                <input formControlName="adresse" type="text" class="form-input" />
+              </div>
+              <button type="submit" class="btn-primary" [disabled]="savingInfo()">
+                @if (savingInfo()) { Sauvegarde... } @else { 💾 Sauvegarder les informations }
+              </button>
+            </form>
+          </div>
+          }
+
+          <!-- Notes médicales -->
+          @if (showNotesEdit()) {
+            <div class="card border-l-4 border-indigo-400">
+              <h2 class="text-base font-semibold text-gray-900 mb-4">Notes médicales &amp; Statut</h2>
+
+            @if (saveSuccess()) {
+              <div class="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+                ✅ Modifications sauvegardées
+              </div>
+            }
+
+            <form [formGroup]="notesForm" (ngSubmit)="saveNotes()">
+              <div class="mb-4">
+                <label class="form-label">Statut actuel du patient</label>
+                <select formControlName="statut" class="form-select w-full max-w-xs">
+                  @for (s of statuts; track s) {
+                    <option [value]="s">{{ s | titlecase }}</option>
+                  }
+                </select>
+              </div>
+
+              <div class="mb-4">
+                <label class="form-label">Notes médicales</label>
+                <textarea
+                  formControlName="notesMedicales"
+                  rows="6"
+                  class="form-input resize-none"
+                  placeholder="Observations, traitements en cours, historique clinique..."
+                ></textarea>
+              </div>
+
+              <button type="submit" class="btn-primary" [disabled]="saving()">
+                @if (saving()) { Sauvegarde... } @else { 💾 Sauvegarder }
+              </button>
+            </form>
+          </div>
+          }
+        </div>
+
+        <!-- Right column: nouvelle consultation + historique -->
+        <div class="space-y-4">
+          <!-- Bouton + formulaire nouvelle consultation -->
+          <div class="flex items-center justify-between">
+            <h2 class="text-base font-semibold text-gray-900">Historique consultations</h2>
+            <button (click)="showConsultForm.set(!showConsultForm())" class="btn-primary text-sm py-1.5">
+              @if (showConsultForm()) { ✕ Annuler } @else { ➕ Nouvelle consultation }
+            </button>
+          </div>
+
+          @if (consultSuccess()) {
+            <div class="p-3 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+              ✅ Consultation enregistrée
+            </div>
+          }
+
+          @if (showConsultForm()) {
+            <div class="card border-l-4 border-blue-400">
+              <h3 class="text-sm font-semibold text-gray-800 mb-3">📋 Nouvelle consultation</h3>
+              <form [formGroup]="consultForm" (ngSubmit)="submitConsultation()" class="space-y-3">
+                <div>
+                  <label class="form-label">Diagnostic *</label>
+                  <input formControlName="diagnostic" type="text" class="form-input"
+                    placeholder="Ex : Déséquilibre glycémique..." />
+                </div>
+                <div>
+                  <label class="form-label">Traitement prescrit</label>
+                  <input formControlName="traitement" type="text" class="form-input"
+                    placeholder="Ex : Metformine 500mg x2/j..." />
+                </div>
+                <div>
+                  <label class="form-label">Notes cliniques</label>
+                  <textarea formControlName="notes" rows="3" class="form-input resize-none"
+                    placeholder="Observations, examens, évolution..."></textarea>
+                </div>
+                <div>
+                  <label class="form-label">Statut patient après consultation</label>
+                  <select formControlName="statutPatient" class="form-select w-full">
+                    @for (s of statuts; track s) {
+                      <option [value]="s">{{ s | titlecase }}</option>
+                    }
+                  </select>
+                </div>
+                <button type="submit" class="btn-primary w-full"
+                  [disabled]="consultForm.invalid || consultLoading()">
+                  @if (consultLoading()) { Enregistrement... } @else { 💾 Enregistrer la consultation }
+                </button>
+              </form>
+            </div>
+          }
+
+          @if (consultations().length === 0 && !showConsultForm()) {
+            <div class="card text-center text-gray-400 text-sm py-8">
+              Aucune consultation enregistrée
+            </div>
+          }
+
+          @for (c of consultations(); track c._id) {
+            <div class="card border-l-4"
+              [class.border-primary-400]="editingConsultId() !== c._id"
+              [class.border-blue-500]="editingConsultId() === c._id">
+
+              @if (editingConsultId() === c._id) {
+                <!-- Formulaire édition inline -->
+                <form [formGroup]="editConsultForm" (ngSubmit)="saveEditConsult(c._id)" class="space-y-3">
+                  <p class="text-xs font-semibold text-blue-600 mb-2">✏️ Modifier la consultation du {{ c.date | date:'dd/MM/yyyy' }}</p>
+                  <div>
+                    <label class="form-label">Diagnostic *</label>
+                    <input formControlName="diagnostic" type="text" class="form-input" />
+                  </div>
+                  <div>
+                    <label class="form-label">Traitement</label>
+                    <input formControlName="traitement" type="text" class="form-input" />
+                  </div>
+                  <div>
+                    <label class="form-label">Notes</label>
+                    <textarea formControlName="notes" rows="2" class="form-input resize-none"></textarea>
+                  </div>
+                  <div>
+                    <label class="form-label">Statut patient</label>
+                    <select formControlName="statutPatient" class="form-select w-full">
+                      @for (s of statuts; track s) {
+                        <option [value]="s">{{ s | titlecase }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="flex gap-2">
+                    <button type="submit" class="btn-primary flex-1 text-sm"
+                      [disabled]="editConsultForm.invalid || editConsultLoading()">
+                      @if (editConsultLoading()) { ... } @else { 💾 Sauvegarder }
+                    </button>
+                    <button type="button" (click)="cancelEditConsult()" class="btn-secondary flex-1 text-sm">
+                      Annuler
+                    </button>
+                  </div>
+                </form>
+              } @else {
+                <!-- Vue normale -->
+                <div class="flex items-start justify-between mb-2">
+                  <span class="text-xs font-semibold text-primary-600">
+                    {{ c.date ? (c.date | date:'dd/MM/yyyy') : (c.createdAt | date:'dd/MM/yyyy') }}
+                  </span>
+                  <div class="flex items-center gap-1">
+                    @if (c.statutPatient) {
+                      <app-status-badge [statut]="c.statutPatient" />
+                    }
+                    @if (c.medecin._id === auth.currentUser()?._id) {
+                      <button (click)="startEditConsult(c)"
+                        class="ml-2 text-xs text-blue-500 hover:text-blue-700 px-1.5 py-0.5 rounded border border-blue-200 hover:bg-blue-50"
+                        title="Modifier">✏️</button>
+                      <button (click)="deleteConsult(c._id)"
+                        [disabled]="deletingConsultId() === c._id"
+                        class="text-xs text-red-400 hover:text-red-600 px-1.5 py-0.5 rounded border border-red-200 hover:bg-red-50"
+                        title="Supprimer">🗑️</button>
+                    }
+                  </div>
+                </div>
+                <p class="text-sm font-medium text-gray-900 mb-1">{{ c.diagnostic }}</p>
+                @if (c.traitement) {
+                  <p class="text-xs text-gray-500">💊 {{ c.traitement }}</p>
+                }
+                @if (c.notes) {
+                  <p class="text-xs text-gray-400 mt-1 italic">{{ c.notes }}</p>
+                }
+                <p class="text-xs text-gray-400 mt-2">Dr. {{ c.medecin.prenom }} {{ c.medecin.nom }}</p>
+              }
+            </div>
+          }
+        </div>
+
+      </div>
+    }
+  </main>
+</div>

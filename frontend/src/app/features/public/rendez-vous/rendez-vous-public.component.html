@@ -1,0 +1,208 @@
+<div class="min-h-screen bg-gradient-to-br from-gray-950 via-slate-900 to-gray-900 flex items-center justify-center p-4">
+  <div class="w-full max-w-xl">
+    <!-- Header -->
+    <div class="text-center mb-8">
+      <a href="/" class="block w-fit mx-auto mb-6 text-blue-300/70 hover:text-blue-200 text-sm transition-colors">
+        ← Retour à l'accueil
+      </a>
+      <div class="inline-flex items-center justify-center w-16 h-16 bg-white/10 backdrop-blur rounded-2xl border border-white/20 mb-4">
+        <span class="text-4xl">🏥</span>
+      </div>
+      <h1 class="text-3xl font-bold text-white">Prise de rendez-vous</h1>
+      <p class="text-teal-400 mt-1">Aucune inscription requise</p>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-2xl overflow-hidden">
+      <!-- Stepper header -->
+      @if (step() !== 4) {
+        <div class="flex border-b border-gray-100">
+          @for (s of [1, 2, 3]; track s) {
+            <div
+              class="flex-1 py-3 text-center text-xs font-medium"
+              [class.text-primary-700]="step() === s"
+              [class.bg-primary-50]="step() === s"
+              [class.text-gray-400]="step() !== s"
+            >
+              <span
+                class="inline-flex items-center justify-center w-5 h-5 rounded-full text-xs mr-1"
+                [class.bg-primary-600]="step() >= s"
+                [class.text-white]="step() >= s"
+                [class.bg-gray-200]="step() < s"
+              >{{ s }}</span>
+              <span class="hidden sm:inline">
+                {{ s === 1 ? 'Identité' : s === 2 ? 'Motif & Médecin' : 'Créneau' }}
+              </span>
+            </div>
+          }
+        </div>
+      }
+
+      <div class="p-8">
+        <!-- Step 1: Identité -->
+        @if (step() === 1) {
+          <h2 class="text-lg font-semibold text-gray-900 mb-5">Vos informations</h2>
+          <form [formGroup]="step1Form" (ngSubmit)="goStep(2)" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="form-label">Prénom *</label>
+                <input formControlName="prenom" type="text" class="form-input" />
+              </div>
+              <div>
+                <label class="form-label">Nom *</label>
+                <input formControlName="nom" type="text" class="form-input" />
+              </div>
+            </div>
+            <div>
+              <label class="form-label">Date de naissance</label>
+              <input formControlName="dateNaissance" type="date" class="form-input" />
+            </div>
+            <div>
+              <label class="form-label">Téléphone *</label>
+              <input formControlName="telephone" type="tel" class="form-input" placeholder="06 12 34 56 78" />
+            </div>
+            <div>
+              <label class="form-label">Email (optionnel)</label>
+              <input formControlName="email" type="email" class="form-input" placeholder="votre@email.fr" />
+            </div>
+            <button type="submit" [disabled]="step1Form.invalid" class="btn-primary w-full justify-center">
+              Continuer →
+            </button>
+          </form>
+        }
+
+        <!-- Step 2: Motif & Médecin -->
+        @if (step() === 2) {
+          <h2 class="text-lg font-semibold text-gray-900 mb-5">Motif & Médecin</h2>
+          <form [formGroup]="step2Form" (ngSubmit)="goStep(3)" class="space-y-4">
+            <div>
+              <label class="form-label">Médecin *</label>
+              <select formControlName="medecinId" class="form-select">
+                <option value="">Choisir un médecin...</option>
+                @for (m of medecins(); track m._id) {
+                  <option [value]="m._id">Dr. {{ m.prenom }} {{ m.nom }} — {{ m.specialite }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="form-label">Motif *</label>
+              <input formControlName="motif" type="text" class="form-input" placeholder="Décrivez brièvement votre motif..." />
+            </div>
+            <div>
+              <label class="form-label">Niveau d'urgence</label>
+              <select formControlName="niveauUrgence" class="form-select">
+                <option value="faible">🟢 Faible — Pas urgent</option>
+                <option value="moyen">🟡 Moyen — Consultez sous 48h</option>
+                <option value="élevé">🔴 Élevé — Urgent</option>
+              </select>
+            </div>
+            <div class="flex gap-3">
+              <button type="button" (click)="goStep(1)" class="btn-secondary flex-1 justify-center">← Retour</button>
+              <button type="submit" [disabled]="step2Form.invalid" class="btn-primary flex-1 justify-center">Continuer →</button>
+            </div>
+          </form>
+        }
+
+        <!-- Step 3: Créneau -->
+        @if (step() === 3) {
+          <h2 class="text-lg font-semibold text-gray-900 mb-5">Choisir un créneau</h2>
+          <form [formGroup]="step3Form" (ngSubmit)="confirm()" class="space-y-4">
+            <div>
+              <label class="form-label">Date *</label>
+              <input
+                formControlName="date"
+                type="date"
+                [min]="minDate"
+                (change)="onDateChange()"
+                class="form-input"
+              />
+            </div>
+
+            @if (creneauxLoading()) {
+              <p class="text-sm text-gray-400">Chargement des créneaux...</p>
+            } @else if (creneaux().length > 0) {
+              <div>
+                <label class="form-label">Heure disponible *</label>
+                <div class="grid grid-cols-4 gap-2 max-h-48 overflow-y-auto pr-1">
+                  @for (slot of creneaux(); track slot) {
+                    <button
+                      type="button"
+                      (click)="step3Form.patchValue({ heure: slot })"
+                      [class]="'py-2 rounded-lg text-sm font-medium border transition-colors ' +
+                        (step3Form.value.heure === slot
+                          ? 'bg-primary-600 text-white border-primary-600'
+                          : 'bg-white text-gray-700 border-gray-300 hover:border-primary-400 hover:text-primary-700')"
+                    >
+                      {{ slot }}
+                    </button>
+                  }
+                </div>
+              </div>
+            } @else if (step3Form.value.date) {
+              <p class="text-sm text-amber-600 bg-amber-50 p-3 rounded-lg">
+                Aucun créneau disponible ce jour. Veuillez choisir une autre date.
+              </p>
+            }
+
+            @if (errorMsg()) {
+              <div class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+                {{ errorMsg() }}
+              </div>
+            }
+
+            <div class="flex gap-3">
+              <button type="button" (click)="goStep(2)" class="btn-secondary flex-1 justify-center">← Retour</button>
+              <button
+                type="submit"
+                [disabled]="step3Form.invalid || loading()"
+                class="btn-primary flex-1 justify-center"
+              >
+                @if (loading()) { Confirmation... } @else { Confirmer ✓ }
+              </button>
+            </div>
+          </form>
+        }
+
+        <!-- Step 4: Confirmation -->
+        @if (step() === 4) {
+          <div class="text-center py-4">
+            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <span class="text-3xl">✅</span>
+            </div>
+            <h2 class="text-xl font-bold text-gray-900 mb-2">Rendez-vous confirmé !</h2>
+            <p class="text-gray-500 mb-4">Votre demande a bien été enregistrée.</p>
+
+            <div class="bg-gray-50 rounded-xl p-4 text-left mb-6">
+              <div class="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <p class="text-gray-400">Patient</p>
+                  <p class="font-medium">{{ step1Form.value.prenom }} {{ step1Form.value.nom }}</p>
+                </div>
+                <div>
+                  <p class="text-gray-400">Médecin</p>
+                  <p class="font-medium">Dr. {{ selectedMedecin?.prenom }} {{ selectedMedecin?.nom }}</p>
+                </div>
+                <div>
+                  <p class="text-gray-400">Date & Heure</p>
+                  <p class="font-medium">{{ step3Form.value.date }} à {{ step3Form.value.heure }}</p>
+                </div>
+                <div>
+                  <p class="text-gray-400">Motif</p>
+                  <p class="font-medium">{{ step2Form.value.motif }}</p>
+                </div>
+              </div>
+            </div>
+
+            <div class="bg-primary-50 border border-primary-200 rounded-xl p-4 mb-6">
+              <p class="text-xs text-primary-600 mb-1">Numéro de référence</p>
+              <p class="text-xl font-mono font-bold text-primary-800">{{ reference() }}</p>
+              <p class="text-xs text-primary-500 mt-1">Conservez ce numéro pour tout suivi.</p>
+            </div>
+
+            <a href="/rendez-vous" class="btn-primary justify-center">Prendre un autre RDV</a>
+          </div>
+        }
+      </div>
+    </div>
+
+  </div>
+</div>

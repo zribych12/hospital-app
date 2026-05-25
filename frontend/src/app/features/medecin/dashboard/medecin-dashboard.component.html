@@ -1,0 +1,96 @@
+<div class="flex">
+  <app-sidebar />
+
+  <main class="ml-64 flex-1 p-8 min-h-screen">
+    <div class="mb-8">
+      <h1 class="text-2xl font-bold text-gray-900">
+        Bonjour, Dr. {{ auth.getUser()?.prenom }} {{ auth.getUser()?.nom }} 👋
+      </h1>
+      <p class="text-gray-500 mt-1">{{ auth.getUser()?.specialite }}</p>
+    </div>
+
+    @if (loading()) {
+      <div class="flex items-center justify-center h-64">
+        <svg class="animate-spin w-8 h-8 text-primary-600" fill="none" viewBox="0 0 24 24">
+          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+        </svg>
+      </div>
+    } @else if (stats()) {
+
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <app-stat-card
+          label="Patients suivis"
+          [value]="stats()!.totalPatients"
+          icon="👥"
+          iconBg="bg-blue-100"
+        />
+        <app-stat-card
+          label="RDV aujourd'hui"
+          [value]="stats()!.rdvAujourdhui"
+          icon="📅"
+          iconBg="bg-purple-100"
+        />
+        <app-stat-card
+          label="RDV en attente"
+          [value]="stats()!.rdvEnAttente"
+          icon="⏳"
+          iconBg="bg-yellow-100"
+        />
+        <app-stat-card
+          label="Taux de présence"
+          [value]="stats()!.tauxPresence + '%'"
+          icon="✅"
+          iconBg="bg-green-100"
+        />
+      </div>
+
+      <!-- Charts row -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Donut chart -->
+        <div class="card">
+          <h2 class="text-base font-semibold text-gray-900 mb-4">Répartition des pathologies</h2>
+          @if (stats()!.pathologies.length > 0) {
+            <canvas baseChart [data]="donutData" [options]="donutOptions" type="doughnut" class="max-h-60"></canvas>
+          } @else {
+            <div class="text-center text-gray-400 py-10">Aucune donnée</div>
+          }
+        </div>
+
+        <!-- Line chart -->
+        <div class="card">
+          <h2 class="text-base font-semibold text-gray-900 mb-4">Consultations (30 derniers jours)</h2>
+          @if (stats()!.consultEvolution.length > 0) {
+            <canvas baseChart [data]="lineData" [options]="lineOptions" type="line" class="max-h-60"></canvas>
+          } @else {
+            <div class="text-center text-gray-400 py-10">Aucune consultation récente</div>
+          }
+        </div>
+      </div>
+
+      <!-- Prochains RDV du jour -->
+      <div class="card">
+        <h2 class="text-base font-semibold text-gray-900 mb-4">Prochains rendez-vous du jour</h2>
+        @if (stats()!.prochainRdv.length === 0) {
+          <p class="text-gray-400 text-sm">Aucun rendez-vous confirmé pour aujourd'hui.</p>
+        } @else {
+          <div class="space-y-3">
+            @for (rdv of stats()!.prochainRdv; track rdv._id) {
+              <div class="flex items-center gap-4 p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors">
+                <div class="w-14 text-center">
+                  <span class="text-sm font-bold text-primary-700">{{ rdv.heure }}</span>
+                </div>
+                <div class="flex-1">
+                  <p class="text-sm font-medium text-gray-900">{{ getPatientName(rdv) }}</p>
+                  <p class="text-xs text-gray-500">{{ rdv.motif }}</p>
+                </div>
+                <app-rdv-status-badge [statut]="rdv.statut" />
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </main>
+</div>

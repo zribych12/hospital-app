@@ -1,0 +1,249 @@
+<div class="flex">
+  <app-sidebar />
+
+  <main class="ml-64 flex-1 p-8 min-h-screen">
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold text-gray-900">Planning</h1>
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg p-1">
+          <button (click)="prevWeek()" class="p-1.5 hover:bg-gray-100 rounded text-gray-600">‹</button>
+          <button (click)="today()" class="px-3 py-1 text-sm font-medium text-gray-700 hover:bg-gray-100 rounded">
+            Aujourd'hui
+          </button>
+          <button (click)="nextWeek()" class="p-1.5 hover:bg-gray-100 rounded text-gray-600">›</button>
+        </div>
+        <p class="text-sm text-gray-600 font-medium w-52 text-center">
+          {{ currentWeekStart() | date:'d MMM' }} — {{ weekDays()[6] | date:'d MMM yyyy' }}
+        </p>
+        <button (click)="openModal()" class="btn-primary">+ Nouveau RDV</button>
+      </div>
+    </div>
+
+    <!-- Résumé de la semaine -->
+    <div class="flex items-center gap-4 mb-4 p-3 bg-white border border-gray-200 rounded-xl text-sm">
+      <span class="font-semibold text-gray-700">Cette semaine :</span>
+      <span class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-gray-400 inline-block"></span>
+        <span class="text-gray-600">{{ weekStats().total }} RDV</span>
+      </span>
+      <span class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-blue-500 inline-block"></span>
+        <span class="text-blue-700">{{ weekStats().confirmes }} confirmés</span>
+      </span>
+      <span class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-yellow-400 inline-block"></span>
+        <span class="text-yellow-700">{{ weekStats().attente }} en attente</span>
+      </span>
+      <span class="flex items-center gap-1.5">
+        <span class="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+        <span class="text-green-700">{{ weekStats().present }} présents</span>
+      </span>
+      @if (weekStats().absent > 0) {
+        <span class="flex items-center gap-1.5">
+          <span class="w-2 h-2 rounded-full bg-red-400 inline-block"></span>
+          <span class="text-red-600">{{ weekStats().absent }} absent(s)</span>
+        </span>
+      }
+    </div>
+
+    <!-- Légende -->
+    <div class="flex gap-4 mb-4">
+      <span class="flex items-center gap-1 text-xs text-gray-500">
+        <span class="w-3 h-3 rounded bg-blue-200"></span> Consultation
+      </span>
+      <span class="flex items-center gap-1 text-xs text-gray-500">
+        <span class="w-3 h-3 rounded bg-red-200"></span> Urgence
+      </span>
+      <span class="flex items-center gap-1 text-xs text-gray-500">
+        <span class="w-3 h-3 rounded bg-green-200"></span> Suivi
+      </span>
+    </div>
+
+    <!-- Calendar grid -->
+    <div class="card p-0 overflow-auto">
+      <table class="w-full border-collapse min-w-[900px]">
+        <thead>
+          <tr class="bg-gray-50">
+            <th class="w-16 py-3 text-xs text-gray-400 font-normal border-b border-r border-gray-200"></th>
+            @for (day of weekDays(); track day.toDateString()) {
+              <th
+                class="py-3 text-center text-xs font-semibold border-b border-gray-200"
+                [class.text-primary-700]="day.toDateString() === today_date.toDateString()"
+              >
+                <p class="text-gray-400">{{ day | date:'EEE' }}</p>
+                <p
+                  class="text-base font-bold mt-0.5"
+                  [class.bg-primary-600]="day.toDateString() === today_date.toDateString()"
+                  [class.text-white]="day.toDateString() === today_date.toDateString()"
+                  [class.rounded-full]="day.toDateString() === today_date.toDateString()"
+                  [class.w-7]="day.toDateString() === today_date.toDateString()"
+                  [class.h-7]="day.toDateString() === today_date.toDateString()"
+                  [class.mx-auto]="day.toDateString() === today_date.toDateString()"
+                  [class.flex]="day.toDateString() === today_date.toDateString()"
+                  [class.items-center]="day.toDateString() === today_date.toDateString()"
+                  [class.justify-center]="day.toDateString() === today_date.toDateString()"
+                >
+                  {{ day | date:'d' }}
+                </p>
+              </th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (hour of hours; track hour) {
+            <tr class="group">
+              <td class="w-16 py-2 pr-2 text-right text-xs text-gray-400 border-r border-gray-200 align-top">
+                {{ hour }}
+              </td>
+              @for (day of weekDays(); track day.toDateString()) {
+                <td class="border-b border-gray-100 p-0.5 align-top min-h-[48px] relative">
+                  @for (rdv of getRdvForSlot(day, hour); track rdv._id) {
+                    <div
+                      [class]="'rounded p-1.5 mb-0.5 text-xs border cursor-pointer ' + getRdvColor(rdv.type)"
+                      (click)="openModal(rdv)"
+                    >
+                      <p class="font-semibold truncate">{{ getPatientName(rdv) }}</p>
+                      <p class="truncate opacity-75">{{ rdv.motif }}</p>
+                      <div class="flex items-center justify-between mt-1">
+                        <app-rdv-status-badge [statut]="rdv.statut" />
+                        <button
+                          (click)="cancelRdv(rdv); $event.stopPropagation()"
+                          class="text-red-400 hover:text-red-600 text-xs ml-1"
+                          title="Annuler"
+                        >✕</button>
+                      </div>
+                      <!-- Boutons d'action rapide selon statut -->
+                      @if (rdv.statut === 'en attente') {
+                        <div class="flex gap-1 mt-1">
+                          <button
+                            (click)="updateStatutRdv(rdv, 'confirmé', $event)"
+                            class="flex-1 bg-green-500 hover:bg-green-600 text-white text-xs rounded px-1 py-0.5"
+                            title="Confirmer le RDV"
+                          >✓ Confirmer</button>
+                        </div>
+                      }
+                      @if (rdv.statut === 'confirmé') {
+                        <div class="flex gap-1 mt-1">
+                          <button
+                            (click)="updateStatutRdv(rdv, 'présent', $event)"
+                            class="flex-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded px-1 py-0.5"
+                            title="Marquer présent"
+                          >✓ Présent</button>
+                          <button
+                            (click)="updateStatutRdv(rdv, 'absent', $event)"
+                            class="flex-1 bg-orange-500 hover:bg-orange-600 text-white text-xs rounded px-1 py-0.5"
+                            title="Marquer absent"
+                          >✗ Absent</button>
+                        </div>
+                      }
+                      @if (rdv.statut === 'présent') {
+                        <div class="flex gap-1 mt-1">
+                          <button
+                            (click)="updateStatutRdv(rdv, 'absent', $event)"
+                            class="w-full bg-orange-500 hover:bg-orange-600 text-white text-xs rounded px-1 py-0.5"
+                            title="Corriger → Absent"
+                          >✗ Absent</button>
+                        </div>
+                      }
+                      @if (rdv.statut === 'absent') {
+                        <div class="flex gap-1 mt-1">
+                          <button
+                            (click)="updateStatutRdv(rdv, 'présent', $event)"
+                            class="w-full bg-blue-500 hover:bg-blue-600 text-white text-xs rounded px-1 py-0.5"
+                            title="Corriger → Présent"
+                          >✓ Présent</button>
+                        </div>
+                      }
+                    </div>
+                  }
+                </td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </main>
+</div>
+
+<!-- RDV Modal -->
+@if (showModal()) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg">
+      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">
+          {{ editingRdv() ? 'Modifier le RDV' : 'Nouveau rendez-vous' }}
+        </h2>
+        <button (click)="closeModal()" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+      </div>
+
+      <form [formGroup]="form" (ngSubmit)="saveRdv()" class="p-6 space-y-4">
+        <div>
+          <label class="form-label">Patient *</label>
+          <select formControlName="patient" class="form-select">
+            <option value="">Sélectionner un patient...</option>
+            @for (p of patients(); track p._id) {
+              <option [value]="p._id">{{ p.prenom }} {{ p.nom }}</option>
+            }
+          </select>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="form-label">Date *</label>
+            <input formControlName="date" type="date" class="form-input" />
+          </div>
+          <div>
+            <label class="form-label">Heure *</label>
+            <select formControlName="heure" class="form-select">
+              <option value="">--:--</option>
+              @for (h of hours; track h) {
+                <option [value]="h">{{ h }}</option>
+              }
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label class="form-label">Motif *</label>
+          <input formControlName="motif" type="text" class="form-input" placeholder="Motif de consultation..." />
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="form-label">Type</label>
+            <select formControlName="type" class="form-select">
+              <option value="consultation">Consultation</option>
+              <option value="suivi">Suivi</option>
+              <option value="urgence">Urgence</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Durée (min)</label>
+            <select formControlName="duree" class="form-select">
+              <option [value]="15">15 min</option>
+              <option [value]="30">30 min</option>
+              <option [value]="45">45 min</option>
+              <option [value]="60">1h</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Urgence</label>
+            <select formControlName="niveauUrgence" class="form-select">
+              <option value="faible">Faible</option>
+              <option value="moyen">Moyen</option>
+              <option value="élevé">Élevé</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-2">
+          <button type="button" (click)="closeModal()" class="btn-secondary flex-1 justify-center">Annuler</button>
+          <button type="submit" class="btn-primary flex-1 justify-center" [disabled]="form.invalid || formLoading()">
+            {{ formLoading() ? 'Enregistrement...' : (editingRdv() ? 'Modifier' : 'Créer') }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+}

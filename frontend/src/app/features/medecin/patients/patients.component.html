@@ -1,0 +1,168 @@
+<div class="flex">
+  <app-sidebar />
+
+  <main class="ml-64 flex-1 p-8 min-h-screen">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Mes patients</h1>
+        <p class="text-gray-500 mt-1">{{ data()?.total ?? 0 }} patient(s)</p>
+      </div>
+      <button (click)="openAddModal()" class="btn-primary">
+        + Ajouter un patient
+      </button>
+    </div>
+
+    <!-- Filtres -->
+    <div class="card mb-6 flex gap-4 flex-wrap items-end">
+      <div>
+        <label class="form-label">Statut</label>
+        <select (change)="onStatutChange($event)" class="form-select w-44">
+          <option value="">Tous</option>
+          <option value="stable">Stable</option>
+          <option value="en observation">En observation</option>
+          <option value="critique">Critique</option>
+          <option value="guéri">Guéri</option>
+        </select>
+      </div>
+      <div>
+        <label class="form-label">Pathologie</label>
+        <input
+          type="text"
+          placeholder="Rechercher..."
+          (input)="onPathologieChange($event)"
+          class="form-input w-56"
+        />
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card p-0 overflow-hidden">
+      @if (loading()) {
+        <div class="flex items-center justify-center h-40">
+          <svg class="animate-spin w-6 h-6 text-primary-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+        </div>
+      } @else {
+        <table class="w-full">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th class="table-th">Patient</th>
+              <th class="table-th">Âge</th>
+              <th class="table-th">Pathologie</th>
+              <th class="table-th">Statut</th>
+              <th class="table-th">Enregistré le</th>
+              <th class="table-th">Action</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            @for (p of data()?.patients ?? []; track p._id) {
+              <tr class="hover:bg-gray-50 transition-colors">
+                <td class="table-td">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center text-primary-700 font-semibold text-xs">
+                      {{ p.prenom[0] }}{{ p.nom[0] }}
+                    </div>
+                    <div>
+                      <p class="font-medium text-gray-900">{{ p.prenom }} {{ p.nom }}</p>
+                      <p class="text-xs text-gray-400">{{ p.telephone }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="table-td text-gray-500">{{ calcAge(p.dateNaissance) }} ans</td>
+                <td class="table-td text-gray-500">{{ p.pathologie || '—' }}</td>
+                <td class="table-td"><app-status-badge [statut]="p.statut" /></td>
+                <td class="table-td text-gray-500">{{ p.createdAt | date:'dd/MM/yyyy' }}</td>
+                <td class="table-td">
+                  <a [routerLink]="['/medecin/patients', p._id]" class="text-primary-600 hover:text-primary-800 text-sm font-medium">
+                    Voir fiche →
+                  </a>
+                  <button
+                    (click)="confirmDelete(p._id)"
+                    [disabled]="deletingId() === p._id"
+                    class="text-sm text-red-500 hover:text-red-700 disabled:opacity-40 transition-colors ml-3">
+                    {{ deletingId() === p._id ? '...' : '🗑️' }}
+                  </button>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (!data()?.patients?.length) {
+          <div class="text-center py-12 text-gray-400">
+            <p class="text-4xl mb-2">👥</p>
+            <p>Aucun patient trouvé</p>
+          </div>
+        }
+      }
+    </div>
+
+    <!-- Pagination -->
+    @if (data() && data()!.totalPages > 1) {
+      <div class="flex items-center justify-between mt-4">
+        <p class="text-sm text-gray-500">Page {{ page() }} / {{ data()!.totalPages }}</p>
+        <div class="flex gap-2">
+          <button (click)="prevPage()" [disabled]="page() === 1" class="btn-secondary text-sm py-1.5">← Préc.</button>
+          <button (click)="nextPage()" [disabled]="page() === data()!.totalPages" class="btn-secondary text-sm py-1.5">Suiv. →</button>
+        </div>
+      </div>
+    }
+  </main>
+</div>
+
+<!-- Modal : Ajouter un patient -->
+<div *ngIf="showAddModal()" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+    <div class="flex items-center justify-between p-6 border-b border-gray-200">
+      <h2 class="text-lg font-bold text-gray-900">Nouveau patient</h2>
+      <button (click)="closeAddModal()" class="text-gray-400 hover:text-gray-600 text-xl font-bold">&times;</button>
+    </div>
+
+    <form [formGroup]="patientAddForm" (ngSubmit)="submitAdd()" class="p-6 space-y-4">
+      <div *ngIf="addError()" class="p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-700">
+        {{ addError() }}
+      </div>
+
+      <div class="grid grid-cols-2 gap-4">
+        <div>
+          <label class="form-label">Prénom *</label>
+          <input formControlName="prenom" type="text" class="form-input" placeholder="Marie" />
+        </div>
+        <div>
+          <label class="form-label">Nom *</label>
+          <input formControlName="nom" type="text" class="form-input" placeholder="Dupont" />
+        </div>
+        <div>
+          <label class="form-label">Date de naissance *</label>
+          <input formControlName="dateNaissance" type="date" class="form-input" />
+        </div>
+        <div>
+          <label class="form-label">Téléphone</label>
+          <input formControlName="telephone" type="tel" class="form-input" placeholder="06 XX XX XX XX" />
+        </div>
+        <div>
+          <label class="form-label">Email</label>
+          <input formControlName="email" type="email" class="form-input" placeholder="marie@email.fr" />
+        </div>
+        <div>
+          <label class="form-label">Pathologie</label>
+          <input formControlName="pathologie" type="text" class="form-input" placeholder="Diabète type 2..." />
+        </div>
+      </div>
+
+      <div>
+        <label class="form-label">Adresse</label>
+        <input formControlName="adresse" type="text" class="form-input" placeholder="12 rue de la Paix, Paris" />
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <button type="button" (click)="closeAddModal()" class="btn-secondary flex-1">Annuler</button>
+        <button type="submit" [disabled]="patientAddForm.invalid || addLoading()" class="btn-primary flex-1">
+          @if (addLoading()) { Création... } @else { Créer le patient }
+        </button>
+      </div>
+    </form>
+  </div>
+</div>

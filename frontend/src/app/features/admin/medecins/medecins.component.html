@@ -1,0 +1,159 @@
+<div class="flex">
+  <app-sidebar />
+
+  <main class="ml-64 flex-1 p-8 min-h-screen">
+    <div class="flex items-center justify-between mb-8">
+      <div>
+        <h1 class="text-2xl font-bold text-gray-900">Gestion des médecins</h1>
+        <p class="text-gray-500 mt-1">{{ medecins().length }} médecin(s) enregistré(s)</p>
+      </div>
+      <button (click)="openModal()" class="btn-primary">
+        + Ajouter un médecin
+      </button>
+    </div>
+
+    <!-- Table -->
+    <div class="card p-0 overflow-hidden">
+      @if (loading()) {
+        <div class="flex items-center justify-center h-40">
+          <svg class="animate-spin w-6 h-6 text-primary-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
+          </svg>
+        </div>
+      } @else {
+        <table class="w-full">
+          <thead class="bg-gray-50 border-b border-gray-200">
+            <tr>
+              <th class="table-th">Médecin</th>
+              <th class="table-th">Spécialité</th>
+              <th class="table-th">Email</th>
+              <th class="table-th">Statut</th>
+              <th class="table-th">Créé le</th>
+              <th class="table-th">Actions</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100">
+            @for (m of medecins(); track m._id) {
+              <tr class="hover:bg-gray-50 transition-colors">
+                <td class="table-td">
+                  <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center text-primary-700 font-semibold text-xs">
+                      {{ m.prenom[0] }}{{ m.nom[0] }}
+                    </div>
+                    <div>
+                      <p class="font-medium text-gray-900">Dr. {{ m.prenom }} {{ m.nom }}</p>
+                    </div>
+                  </div>
+                </td>
+                <td class="table-td text-gray-500">{{ m.specialite || '—' }}</td>
+                <td class="table-td text-gray-500">{{ m.email }}</td>
+                <td class="table-td">
+                  <span [class]="m.actif ? 'badge-stable' : 'badge-critique'">
+                    {{ m.actif ? 'Actif' : 'Inactif' }}
+                  </span>
+                </td>
+                <td class="table-td text-gray-500">{{ m.createdAt | date:'dd/MM/yyyy' }}</td>
+                <td class="table-td">
+                  <div class="flex items-center gap-2">
+                    <button
+                      (click)="toggleStatus(m)"
+                      [class]="m.actif ? 'text-xs px-2 py-1 rounded bg-red-50 text-red-600 hover:bg-red-100' : 'text-xs px-2 py-1 rounded bg-green-50 text-green-600 hover:bg-green-100'"
+                    >
+                      {{ m.actif ? 'Désactiver' : 'Activer' }}
+                    </button>
+                    <button
+                      (click)="resetPassword(m)"
+                      class="text-xs px-2 py-1 rounded bg-yellow-50 text-yellow-700 hover:bg-yellow-100"
+                    >
+                      Réinit. MDP
+                    </button>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+
+        @if (medecins().length === 0) {
+          <div class="text-center py-12 text-gray-400">
+            <p class="text-lg">Aucun médecin enregistré</p>
+          </div>
+        }
+      }
+    </div>
+  </main>
+</div>
+
+<!-- Modal Ajouter médecin -->
+@if (showModal()) {
+  <div class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md">
+      <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+        <h2 class="text-lg font-semibold text-gray-900">Nouveau médecin</h2>
+        <button (click)="closeModal()" class="text-gray-400 hover:text-gray-600 text-xl">✕</button>
+      </div>
+
+      <div class="p-6">
+        @if (showTempPassword()) {
+          <div class="p-4 bg-green-50 border border-green-200 rounded-xl mb-4">
+            <p class="text-sm text-green-700 font-semibold mb-1">✅ Médecin créé avec succès !</p>
+            <p class="text-sm text-green-600">Mot de passe temporaire (affiché une seule fois) :</p>
+            <code class="text-base font-mono font-bold text-green-800 bg-green-100 px-2 py-1 rounded mt-1 block">
+              {{ tempPassword() }}
+            </code>
+            <p class="text-xs text-green-500 mt-2">Communiquez ce mot de passe au médecin.</p>
+          </div>
+          <button (click)="closeModal()" class="btn-primary w-full justify-center">Fermer</button>
+        } @else {
+          @if (errorMsg()) {
+            <div class="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg">
+              <p class="text-sm text-red-700">{{ errorMsg() }}</p>
+            </div>
+          }
+
+          <form [formGroup]="form" (ngSubmit)="createMedecin()" class="space-y-4">
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <label class="form-label">Prénom *</label>
+                <input formControlName="prenom" type="text" class="form-input" placeholder="Sophie" />
+              </div>
+              <div>
+                <label class="form-label">Nom *</label>
+                <input formControlName="nom" type="text" class="form-input" placeholder="Martin" />
+              </div>
+            </div>
+            <div>
+              <label class="form-label">Email *</label>
+              <input formControlName="email" type="email" class="form-input" placeholder="s.martin@hopital.fr" />
+            </div>
+            <div>
+              <label class="form-label">Spécialité *</label>
+              <select formControlName="specialite" class="form-select">
+                <option value="">Sélectionner...</option>
+                <option>Cardiologie</option>
+                <option>Neurologie</option>
+                <option>Pneumologie</option>
+                <option>Pédiatrie</option>
+                <option>Chirurgie générale</option>
+                <option>Médecine générale</option>
+                <option>Urgences</option>
+                <option>Oncologie</option>
+                <option>Rhumatologie</option>
+              </select>
+            </div>
+
+            <div class="flex gap-3 pt-2">
+              <button type="button" (click)="closeModal()" class="btn-secondary flex-1 justify-center">
+                Annuler
+              </button>
+              <button type="submit" class="btn-primary flex-1 justify-center" [disabled]="form.invalid || formLoading()">
+                @if (formLoading()) { Création... } @else { Créer }
+              </button>
+            </div>
+          </form>
+        }
+      </div>
+    </div>
+  </div>
+}
