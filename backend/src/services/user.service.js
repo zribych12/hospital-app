@@ -1,7 +1,5 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
-const emailService = require('./email.service');
-
 const generateTempPassword = () => {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
   return Array.from({ length: 12 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
@@ -26,12 +24,6 @@ const createMedecin = async (data) => {
     specialite: data.specialite,
     actif: true,
   });
-
-  try {
-    await emailService.sendCredentials(data.email, data.prenom, data.nom, tempPassword);
-  } catch (e) {
-    console.warn('⚠️  Email non envoyé :', e.message);
-  }
 
   const medecinObj = medecin.toObject();
   delete medecinObj.passwordHash;
@@ -62,12 +54,6 @@ const resetPassword = async (id) => {
   const tempPassword = generateTempPassword();
   user.passwordHash = await bcrypt.hash(tempPassword, 12);
   await user.save();
-
-  try {
-    await emailService.sendPasswordReset(user.email, user.prenom, user.nom, tempPassword);
-  } catch (e) {
-    console.warn('⚠️  Email non envoyé :', e.message);
-  }
 
   return { tempPassword };
 };
