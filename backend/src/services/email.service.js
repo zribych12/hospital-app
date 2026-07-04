@@ -46,4 +46,72 @@ const sendPasswordReset = async (email, prenom, nom, tempPassword) => {
   });
 };
 
-module.exports = { sendCredentials, sendPasswordReset };
+const sendRendezVousDecision = async ({
+  email,
+  patientPrenom,
+  patientNom,
+  statut,
+  date,
+  heure,
+  medecinPrenom,
+  medecinNom,
+  motif,
+  reference,
+}) => {
+  if (!process.env.EMAIL_USER) {
+    return { skipped: true, reason: 'EMAIL_USER manquant' };
+  }
+  if (!email) {
+    return { skipped: true, reason: 'email patient manquant' };
+  }
+
+  const isAccepted = statut === 'confirmé';
+  if (!isAccepted && statut !== 'annulé') {
+    return { skipped: true, reason: `statut non notif: ${statut}` };
+  }
+
+  const decisionLabel = isAccepted ? 'accepté' : 'refusé';
+  const subject = isAccepted
+    ? 'Votre rendez-vous a été accepté'
+    : 'Votre rendez-vous a été refusé';
+
+  const parsedDate = date ? new Date(date) : null;
+  const hasValidDate = parsedDate && !Number.isNaN(parsedDate.getTime());
+  const rdvDate = hasValidDate
+    ? parsedDate.toLocaleDateString('fr-FR', {
+        weekday: 'long',
+        day: '2-digit',
+        month: 'long',
+        year: 'numeric',
+      })
+    : '-';
+
+  const transporter = createTransporter();
+  const info = await transporter.sendMail({
+    from: `"Hôpital' <${process.env.EMAIL_USER}>`,
+    to: email,
+    subject,
+    html: `
+      <h2>Bonjour ${patientPrenom || ''} ${patientNom || ''},</h2>
+      <p>Votre demande de rendez-vous a été <strong>${decisionLabel}</strong> par le médecin.</p>
+      <table>
+        <tr><td><strong>Référence :</strong></td><td>${reference || '-'}</td></tr>
+        <tr><td><strong>Date :</strong></td><td>${rdvDate}</td></tr>
+        <tr><td><strong>Heure :</strong></td><td>${heure || '-'}</td></tr>
+        <tr><td><strong>Médecin :</strong></td><td>${medecinPrenom || ''} ${medecinNom || ''}</td></tr>
+        <tr><td><strong>Motif :</strong></td><td>${motif || '-'}</td></tr>
+      </table>
+      <p>Merci de votre confiance.</p>
+    `,
+  });
+
+  return {
+    skipped: false,
+    messageId: info.messageId,
+    accepted: info.accepted,
+    rejected: info.rejected,
+    response: info.response,
+  };
+};
+
+module.exports = { sendCredentials, sendPasswordReset, sendRendezVousDecision };

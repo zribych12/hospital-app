@@ -42,6 +42,10 @@ export class RendezVousService {
     return this.http.patch<RendezVous>(`${this.apiUrl}/${id}/annuler`, {});
   }
 
+  deleteRendezVous(id: string): Observable<{ message: string }> {
+    return this.http.delete<{ message: string }>(`${this.apiUrl}/${id}`);
+  }
+
   // Public routes (sans auth)
   getPublicMedecins(): Observable<{ _id: string; nom: string; prenom: string; specialite: string }[]> {
     return this.http.get<{ _id: string; nom: string; prenom: string; specialite: string }[]>(

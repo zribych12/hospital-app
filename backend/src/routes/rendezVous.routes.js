@@ -5,6 +5,7 @@ const {
   createRendezVous,
   updateRendezVous,
   cancelRendezVous,
+  deleteRendezVous,
   getCreneauxDisponibles,
 } = require('../controllers/rendezVous.controller');
 const authMiddleware = require('../middlewares/auth.middleware');
@@ -19,5 +20,6 @@ router.get('/:id', getRendezVousById);
 router.post('/', createRendezVous);
 router.put('/:id', updateRendezVous);
 router.patch('/:id/annuler', cancelRendezVous);
+router.delete('/:id', deleteRendezVous);
 
 module.exports = router;

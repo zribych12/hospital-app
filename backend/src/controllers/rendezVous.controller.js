@@ -1,4 +1,42 @@
 const RendezVous = require('../models/RendezVous');
+const emailService = require('../services/email.service');
+
+const notifyPatientForDecision = async (rdv) => {
+  const statut = rdv?.statut;
+  if (!['confirmé', 'annulé'].includes(statut)) return;
+
+  const email = rdv.patient?.email || rdv.patientPublic?.email;
+  if (!email) return;
+
+  const patientPrenom = rdv.patient?.prenom || rdv.patientPublic?.prenom;
+  const patientNom = rdv.patient?.nom || rdv.patientPublic?.nom;
+
+  try {
+    const result = await emailService.sendRendezVousDecision({
+      email,
+      patientPrenom,
+      patientNom,
+      statut,
+      date: rdv.date,
+      heure: rdv.heure,
+      medecinPrenom: rdv.medecin?.prenom,
+      medecinNom: rdv.medecin?.nom,
+      motif: rdv.motif,
+      reference: rdv.reference || rdv._id,
+    });
+
+    if (result?.skipped) {
+      console.warn('⚠️  Notification RDV non envoyée :', result.reason);
+      return;
+    }
+
+    console.log(
+      `📧 Notification RDV envoyée à ${email} (messageId=${result?.messageId || 'n/a'})`
+    );
+  } catch (e) {
+    console.warn('⚠️  Email patient non envoyé :', e.message);
+  }
+};
 
 const getRendezVous = async (req, res, next) => {
   try {
@@ -63,14 +101,24 @@ const updateRendezVous = async (req, res, next) => {
     const filter = { _id: req.params.id };
     if (req.user.role === 'medecin') filter.medecin = req.user._id;
 
+    const existingRdv = await RendezVous.findOne(filter).select('statut');
+    if (!existingRdv) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
+
     const rdv = await RendezVous.findOneAndUpdate(filter, req.body, {
       new: true,
       runValidators: true,
     })
-      .populate('patient', 'nom prenom')
+      .populate('patient', 'nom prenom email')
       .populate('medecin', 'nom prenom');
 
-    if (!rdv) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
+    const nextStatut = req.body?.statut;
+    if (
+      ['confirmé', 'annulé'].includes(nextStatut) &&
+      existingRdv.statut !== nextStatut
+    ) {
+      await notifyPatientForDecision(rdv);
+    }
+
     res.json(rdv);
   } catch (error) {
     next(error);
@@ -82,13 +130,46 @@ const cancelRendezVous = async (req, res, next) => {
     const filter = { _id: req.params.id };
     if (req.user.role === 'medecin') filter.medecin = req.user._id;
 
+    const existingRdv = await RendezVous.findOne(filter).select('statut');
+    if (!existingRdv) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
+
     const rdv = await RendezVous.findOneAndUpdate(
       filter,
       { statut: 'annulé' },
       { new: true }
-    );
-    if (!rdv) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
+    )
+      .populate('patient', 'nom prenom email')
+      .populate('medecin', 'nom prenom');
+
+    if (existingRdv.statut !== 'annulé') {
+      await notifyPatientForDecision(rdv);
+    }
+
     res.json(rdv);
+  } catch (error) {
+    next(error);
+  }
+};
+
+const deleteRendezVous = async (req, res, next) => {
+  try {
+    const filter = { _id: req.params.id };
+    if (req.user.role === 'medecin') filter.medecin = req.user._id;
+
+    const rdv = await RendezVous.findOne(filter)
+      .populate('patient', 'nom prenom email')
+      .populate('medecin', 'nom prenom');
+
+    if (!rdv) return res.status(404).json({ message: 'Rendez-vous non trouvé' });
+
+    await RendezVous.findOneAndDelete(filter);
+
+    await notifyPatientForDecision({
+      ...rdv,
+      statut: 'annulé',
+    });
+
+    res.json({ message: 'Rendez-vous supprimé' });
   } catch (error) {
     next(error);
   }
@@ -132,5 +213,6 @@ module.exports = {
   createRendezVous,
   updateRendezVous,
   cancelRendezVous,
+  deleteRendezVous,
   getCreneauxDisponibles,
 };
